@@ -1,240 +1,149 @@
 import { useState, useEffect } from "react";
 import { api } from "../lib/api";
 import { toast } from "sonner";
-import { ShoppingCart, Plus, Trash2, Loader2, Search, DollarSign } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, Loader2, Users, UserPlus } from "lucide-react";
 
-export default function Sales() {
-  const [products, setProducts] = useState([]);
+export default function Customers() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Estado da venda atual
-  const [selectedCustomer, setSelectedCustomer] = useState("");
-  const [cart, setCart] = useState([]);
-  const [searchProduct, setSearchProduct] = useState("");
+  const [search, setSearch] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [form, setForm] = useState({ name: "", email: "", phone: "", document: "" });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const [prodRes, custRes] = await Promise.all([
-          api.get("/products"),
-          api.get("/customers"),
-        ]);
-        setProducts(prodRes.data);
-        setCustomers(custRes.data);
-      } catch (err) {
-        toast.error("Erro ao carregar dados de vendas.");
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
+    loadCustomers();
   }, []);
 
-  const addToCart = (product) => {
-    if (product.stock <= 0) {
-      toast.warning("Produto sem estoque disponível!");
-      return;
+  async function loadCustomers() {
+    try {
+      const response = await api.get("/customers");
+      setCustomers(response.data);
+    } catch (err) {
+      toast.error("Erro ao carregar lista de clientes.");
+    } finally {
+      setLoading(false);
     }
+  }
 
-    const existingIndex = cart.findIndex((item) => item.id === product.id);
-    if (existingIndex > -1) {
-      if (cart[existingIndex].quantity >= product.stock) {
-        toast.warning("Quantidade máxima atingida de acordo com o estoque!");
-        return;
-      }
-      const newCart = [...cart];
-      newCart[existingIndex].quantity += 1;
-      setCart(newCart);
-    } else {
-      setCart([...cart, { ...product, quantity: 1 }]);
-    }
-    toast.success(`${product.name} adicionado ao carrinho.`);
-  };
-
-  const removeFromCart = (productId) => {
-    setCart(cart.filter((item) => item.id !== productId));
-  };
-
-  const updateQuantity = (productId, value) => {
-    const product = products.find((p) => p.id === productId);
-    if (!product) return;
-
-    if (value > product.stock) {
-      toast.warning(`Apenas ${product.stock} unidades disponíveis em estoque.`);
-      return;
-    }
-
-    if (value <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-
-    setCart(cart.map((item) => (item.id === productId ? { ...item, quantity: value } : item)));
-  };
-
-  const totalSale = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-
-  const handleCheckout = async (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
-    if (cart.length === 0) {
-      toast.error("O carrinho está vazio!");
-      return;
-    }
-
     setSubmitting(true);
     try {
-      await api.post("/sales", {
-        customerId: selectedCustomer || null,
-        items: cart.map((item) => ({
-          productId: item.id,
-          quantity: item.quantity,
-          price: item.price,
-        })),
-        total: totalSale,
-      });
-
-      toast.success("Venda realizada com sucesso!");
-      setCart([]);
-      setSelectedCustomer("");
-      // Recarrega os produtos para atualizar as quantidades de estoque na tela
-      const prodRes = await api.get("/products");
-      setProducts(prodRes.data);
+      await api.post("/customers", form);
+      toast.success("Cliente cadastrado com sucesso!");
+      setIsModalOpen(false);
+      setForm({ name: "", email: "", phone: "", document: "" });
+      loadCustomers();
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Erro ao finalizar venda.");
+      toast.error(err?.response?.data?.message || "Erro ao salvar cliente.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const filteredProducts = products.filter((p) =>
-    p.name.toLowerCase().includes(searchProduct.toLowerCase()) || p.sku.toLowerCase().includes(searchProduct.toLowerCase())
+  const filteredCustomers = customers.filter((c) =>
+    c.name.toLowerCase().includes(search.toLowerCase()) || 
+    (c.document && c.document.includes(search)) ||
+    (c.phone && c.phone.includes(search))
   );
-
-  if (loading) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#E4002B]" />
-      </div>
-    );
-  }
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto fade-up">
-      <div>
-        <h1 className="font-heading text-3xl font-bold text-white tracking-tight">Frente de Caixa</h1>
-        <p className="text-zinc-400 mt-1">Lence e finalize vendas de peças de moto rapidamente.</p>
+      {/* Topo */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="font-heading text-3xl font-bold text-white tracking-tight">Clientes</h1>
+          <p className="text-zinc-400 mt-1">Gerencie a base de clientes do seu sistema.</p>
+        </div>
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="bg-[#E4002B] hover:bg-[#C80025] text-white px-4 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(228,0,43,0.2)]"
+        >
+          <UserPlus className="w-4 h-4" /> Novo Cliente
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Coluna da Esquerda: Catálogo de Itens */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center gap-3 bg-[#0a0a0a] border border-white/10 rounded-lg px-4 py-3">
-            <Search className="w-5 h-5 text-zinc-500" />
-            <input
-              type="text"
-              placeholder="Pesquisar peça por nome ou código..."
-              value={searchProduct}
-              onChange={(e) => setSearchProduct(e.target.value)}
-              className="bg-transparent text-white placeholder-zinc-600 outline-none w-full text-sm"
-            />
-          </div>
+      {/* Filtro de Busca */}
+      <div className="flex items-center gap-3 bg-[#0a0a0a] border border-white/10 rounded-lg px-4 py-3 max-w-md">
+        <Search className="w-5 h-5 text-zinc-500" />
+        <input
+          type="text"
+          placeholder="Buscar por nome, CPF ou telefone..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="bg-transparent text-white placeholder-zinc-600 outline-none w-full text-sm"
+        />
+      </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[65vh] overflow-y-auto pr-1">
-            {filteredProducts.map((product) => (
-              <div key={product.id} className="bg-[#0a0a0a] border border-white/10 rounded-xl p-4 flex flex-col justify-between hover:border-white/20 transition-all">
-                <div>
-                  <div className="text-xs text-zinc-500 font-medium">SKU: {product.sku}</div>
-                  <h3 className="font-semibold text-white mt-0.5 text-base">{product.name}</h3>
-                  <div className="text-[#E4002B] font-bold text-lg mt-2">R$ {product.price.toFixed(2)}</div>
-                </div>
-                <div className="flex justify-between items-center mt-4 pt-3 border-t border-white/5">
-                  <span className={`text-xs ${product.stock <= 0 ? "text-red-500" : "text-zinc-400"}`}>
-                    {product.stock <= 0 ? "Sem estoque" : `${product.stock} un. disponíveis`}
-                  </span>
-                  <button
-                    disabled={product.stock <= 0}
-                    onClick={() => addToCart(product)}
-                    className="p-2 rounded-lg bg-white/5 text-white hover:bg-[#E4002B] disabled:opacity-30 disabled:hover:bg-white/5 transition-all"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+      {/* Conteúdo Principal */}
+      {loading ? (
+        <div className="min-h-[40vh] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#E4002B]" />
         </div>
-
-        {/* Coluna da Direita: Carrinho / Checkout */}
-        <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-5 h-fit flex flex-col justify-between space-y-6">
-          <div className="space-y-4">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2 border-b border-white/5 pb-3">
-              <ShoppingCart className="w-5 h-5 text-[#E4002B]" />
-              Carrinho de Compras
-            </h2>
-
-            {/* Selecionar Cliente (Opcional) */}
-            <div className="space-y-1.5">
-              <label className="text-xs text-zinc-400 font-medium">Vincular Cliente (Opcional)</label>
-              <select
-                value={selectedCustomer}
-                onChange={(e) => setSelectedCustomer(e.target.value)}
-                className="w-full bg-[#111] border border-white/10 rounded-lg px-3 py-2 text-white outline-none focus:border-[#E4002B] text-sm"
-              >
-                <option value="">Consumidor Geral (Não identificado)</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+      ) : filteredCustomers.length === 0 ? (
+        <div className="border border-white/5 bg-[#0a0a0a] rounded-xl p-12 text-center text-zinc-500 flex flex-col items-center gap-3">
+          <Users className="w-12 h-12 text-zinc-700" />
+          <p>Nenhum cliente cadastrado ou encontrado.</p>
+        </div>
+      ) : (
+        <div className="bg-[#0a0a0a] border border-white/10 rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-sm text-zinc-300">
+              <thead>
+                <tr className="border-b border-white/10 bg-white/[0.02] text-zinc-400 font-medium">
+                  <th className="p-4">Nome Completo</th>
+                  <th className="p-4">Telefone / WhatsApp</th>
+                  <th className="p-4">E-mail</th>
+                  <th className="p-4">CPF / CNPJ</th>
+                  <th className="p-4 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filteredCustomers.map((customer) => (
+                  <tr key={customer.id} className="hover:bg-white/[0.01] transition-colors">
+                    <td className="p-4 font-medium text-white">{customer.name}</td>
+                    <td className="p-4 text-zinc-400">{customer.phone || "Não informado"}</td>
+                    <td className="p-4 text-zinc-400">{customer.email || "Não informado"}</td>
+                    <td className="p-4 text-zinc-500">{customer.document || "---"}</td>
+                    <td className="p-4 text-right space-x-2">
+                      <button className="text-zinc-400 hover:text-white p-1 transition-colors"><Edit2 className="w-4 h-4" /></button>
+                      <button className="text-zinc-500 hover:text-[#E4002B] p-1 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                    </td>
+                  </tr>
                 ))}
-              </select>
-            </div>
-
-            {/* Listagem do Carrinho */}
-            <div className="space-y-3 max-h-[35vh] overflow-y-auto divide-y divide-white/5 pr-1">
-              {cart.length === 0 ? (
-                <p className="text-sm text-zinc-600 text-center py-12">O carrinho está vazio.</p>
-              ) : (
-                cart.map((item) => (
-                  <div key={item.id} className="pt-3 flex justify-between items-start gap-2">
-                    <div className="flex-1">
-                      <h4 className="text-sm font-medium text-white line-clamp-1">{item.name}</h4>
-                      <p className="text-xs text-zinc-500 mt-0.5">R$ {item.price.toFixed(2)} / un.</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min="1"
-                        value={item.quantity}
-                        onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 0)}
-                        className="w-12 bg-[#111] border border-white/10 rounded px-1.5 py-0.5 text-center text-white text-sm outline-none"
-                      />
-                      <button onClick={() => removeFromCart(item.id)} className="text-zinc-500 hover:text-red-500 transition-colors p-1">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Resumo e Fechamento */}
-          <div className="border-t border-white/10 pt-4 space-y-4">
-            <div className="flex justify-between items-baseline">
-              <span className="text-sm text-zinc-400">Valor Total:</span>
-              <span className="text-2xl font-black text-white">R$ {totalSale.toFixed(2)}</span>
-            </div>
-
-            <button
-              onClick={handleCheckout}
-              disabled={submitting || cart.length === 0}
-              className="w-full bg-[#E4002B] hover:bg-[#C80025] disabled:opacity-40 disabled:hover:bg-[#E4002B] text-white font-semibold py-3 rounded-lg shadow-[0_0_20px_rgba(228,0,43,0.25)] transition-all flex items-center justify-center gap-2"
-            >
-              {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Finalizar e Receber <DollarSign className="w-4 h-4" /></>}
-            </button>
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Modal Cadastro de Clientes */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#0a0a0a] border border-white/15 rounded-xl max-w-md w-full p-6 space-y-4 fade-up">
+            <h2 className="text-xl font-bold text-white">Cadastrar Novo Cliente</h2>
+            <form onSubmit={onSubmit} className="space-y-3">
+              <div className="space-y-1">
+                <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nome Completo *" className="w-full bg-[#111] border border-white/10 rounded-lg px-4 py-2.5 text-white outline-none focus:border-[#E4002B]" />
+              </div>
+              <div className="space-y-1">
+                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="E-mail (Opcional)" className="w-full bg-[#111] border border-white/10 rounded-lg px-4 py-2.5 text-white outline-none focus:border-[#E4002B]" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Telefone / WhatsApp *" className="w-full bg-[#111] border border-white/10 rounded-lg px-4 py-2.5 text-white outline-none focus:border-[#E4002B]" />
+                <input value={form.document} onChange={(e) => setForm({ ...form, document: e.target.value })} placeholder="CPF (Opcional)" className="w-full bg-[#111] border border-white/10 rounded-lg px-4 py-2.5 text-white outline-none focus:border-[#E4002B]" />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancelar</button>
+                <button type="submit" disabled={submitting} className="bg-[#E4002B] text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#C80025] transition-colors flex items-center gap-1">
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar Cliente"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
