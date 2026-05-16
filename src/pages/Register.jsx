@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { formatError } from "@/lib/api";
+import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 import { Loader2, ArrowRight } from "lucide-react";
 
@@ -19,8 +18,10 @@ export default function Register() {
       toast.success("Conta criada! 7 dias de teste gratuitos.");
       navigate("/dashboard");
     } catch (err) {
-      toast.error(formatError(err));
-    } finally { setLoading(false); }
+      toast.error(err?.response?.data?.message || "Erro ao criar conta. Tente novamente.");
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   return (
@@ -41,12 +42,11 @@ export default function Register() {
         <p className="text-zinc-400 mb-8">7 dias de teste gratuitos. Sem cartão.</p>
 
         <form onSubmit={onSubmit} className="space-y-4">
-          <input data-testid="register-name-input" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nome completo" className="w-full bg-[#0a0a0a] border border-white/15 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:border-[#E4002B] focus:ring-1 focus:ring-[#E4002B] outline-none" />
-          <input data-testid="register-email-input" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Email" className="w-full bg-[#0a0a0a] border border-white/15 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:border-[#E4002B] focus:ring-1 focus:ring-[#E4002B] outline-none" />
-          <input data-testid="register-phone-input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Telefone (WhatsApp)" className="w-full bg-[#0a0a0a] border border-white/15 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:border-[#E4002B] focus:ring-1 focus:ring-[#E4002B] outline-none" />
-          <input data-testid="register-password-input" type="password" required minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Senha (mín. 6 caracteres)" className="w-full bg-[#0a0a0a] border border-white/15 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:border-[#E4002B] focus:ring-1 focus:ring-[#E4002B] outline-none" />
+          <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nome completo" className="w-full bg-[#0a0a0a] border border-white/15 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:border-[#E4002B] focus:ring-1 focus:ring-[#E4002B] outline-none" />
+          <input type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Email" className="w-full bg-[#0a0a0a] border border-white/15 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:border-[#E4002B] focus:ring-1 focus:ring-[#E4002B] outline-none" />
+          <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Telefone (WhatsApp)" className="w-full bg-[#0a0a0a] border border-white/15 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:border-[#E4002B] focus:ring-1 focus:ring-[#E4002B] outline-none" />
+          <input type="password" required minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Senha (mín. 6 caracteres)" className="w-full bg-[#0a0a0a] border border-white/15 rounded-lg px-4 py-3 text-white placeholder-zinc-600 focus:border-[#E4002B] focus:ring-1 focus:ring-[#E4002B] outline-none" />
           <button
-            data-testid="register-submit-button"
             type="submit"
             disabled={loading}
             className="w-full bg-[#E4002B] hover:bg-[#C80025] disabled:opacity-60 text-white font-medium px-6 py-3.5 rounded-lg shadow-[0_0_18px_rgba(228,0,43,0.35)] transition-all flex items-center justify-center gap-2 group"
@@ -57,7 +57,7 @@ export default function Register() {
 
         <p className="text-sm text-zinc-500 mt-8">
           Já tem conta?{" "}
-          <Link to="/login" data-testid="goto-login" className="text-[#E4002B] hover:underline font-medium">Entrar</Link>
+          <Link to="/login" className="text-[#E4002B] hover:underline font-medium">Entrar</Link>
         </p>
       </div>
     </div>
